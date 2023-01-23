@@ -29,16 +29,12 @@ library(tidyverse)
 
 ## 4. Graphs ----
 library(ggplot2)
+library(quantreg)
 library(plotly)
 library(nlstools)
 
+# Tables
 library(DT)
-
-# Data import ----
-countiesNames <- read.csv("data/trials.csv", sep=",", dec=".")
-countiesBorders <- st_read("Kansas_Counties/Tiger_2020_Counties.shp")
-datafcurves <- read.csv("data/curves.csv", sep=",", dec=".")
-listOfCounties <- read.csv("data/list.csv", sep=",", dec=".")
 
 # Function import ----
 source(file = "quadratic_plateau.R")
@@ -46,9 +42,18 @@ library(nlraa)
 library(minpack.lm)
 library(devtools)
 
+# Data import ----
+countiesNames <- read.csv("data/trials.csv", sep=",", dec=".")
+countiesBorders <- st_read("Kansas_Counties/Tiger_2020_Counties.shp")
+listOfCounties <- read.csv("data/list.csv", sep=",", dec=".")
+
+datafcurves <- 
+  read.csv("data/curves.csv", sep=",", dec=".") %>% 
+  # Create imperial units
+  mutate(yield_bu = Yield * 15.93,
+         nrate_lbs = Nrate *0.89)
+
 ```
-
-
 Visualization
 =======================================================
 
@@ -74,24 +79,29 @@ hr()
 
 # N price -----
 shiny::sliderInput(inputId = "NCost",
-                   label = h6("Select the actual Nitrogen source cost (US$/kg N)"),
-                   value = 2.8, 
-                   min = 1,
-                   max = 3.0,
+                   label = h6("Select the cost of N (US$/lbs N)"),
+                   value = 1, 
+                   min = 0.5,
+                   max = 1.5,
                    step = 0.1)
 
 hr()
 
 # Corn price -----
 shiny::sliderInput(inputId = "cornPrice",
-                   label = h6("Select the actual selling corn price (US$/kg)"),
-                   value = 0.35, 
-                   min = 0.1,
-                   max = 0.7,
-                   step = 0.01)
+                   label = h6("Select the corn price (US$/bu)"),
+                   value = 6.8, 
+                   min = 2,
+                   max = 8,
+                   step = 0.1)
 
 ```
 
+### How we could improve it?
+<i> Your feedback is much appreciated! </i>
+```{r}
+tags$img(src = "Survey.png", height = "200px", width = "200px")
+```
 
 Column {data-width=750}
 -------------------------------------------------------
@@ -158,7 +168,7 @@ datafplot <- reactive({
   
   datafcurves %>%
     dplyr::filter(County %in% input$countiesSelection) %>%
-    dplyr::select(c(Nrate, Yield))
+    dplyr::select(c(Nrate, Yield, nrate_lbs, yield_bu))
   
 })
 
@@ -166,8 +176,8 @@ datafplot <- reactive({
 QP_Fit <- reactive({
   
    quadratic_plateau(data = datafplot(),
-                     yield = Yield,
-                     Nav = Nrate,
+                     yield = yield_bu,
+                     Nav = nrate_lbs,
                      plot = FALSE,
                      tidy = TRUE)
   
@@ -179,36 +189,38 @@ QP_Fit <- reactive({
 output$responseCurve <-  renderPlotly({
    
    plot <- ggplot(data = datafplot(),
-                    aes(y = datafplot()$Yield,
-                        x = datafplot()$Nrate))+
-     #geom_point(size = 2, alpha = 0.5) +
+                    aes(y = datafplot()$yield_bu,
+                        x = datafplot()$nrate_lbs))+
+     geom_point(size = 1, alpha = 0.5) +
      geom_line(stat="smooth",
             method = "nls",
             formula = y ~ SSquadp3xs(x, a, b, jp),
             se = FALSE,
-            color = "#CC0000")+
-     # geom_vline(xintercept = Optimums()$AOD, size = 1,
+            color = "steelblue")+
+     geom_quantile(quantiles=c(0.10, 0.90), formula= y ~ poly(x,2), 
+                   colour="red", linetype = "dashed", size = 0.25)+
+     # geom_vline(xintercept = Optimums()$AONR, size = 1,
      #            linetype = "dashed", color = "steelblue")+
-     # geom_vline(xintercept = Optimums()$EOD, size = 1,
+     # geom_vline(xintercept = Optimums()$EONR, size = 1,
      #            linetype = "dotted", color = "#a6808c")+
      # ggplot2::annotate("pointrange",
      #                   label = "Agronomical Optimum Dosis",
      #                   shape = 25, size = 4,
-     #                   x = Optimums()$AOD, y = 0,
-     #                   xmin = Optimums()$AOD, xmax = Optimums()$AOD,
+     #                   x = Optimums()$AONR, y = 0,
+     #                   xmin = Optimums()$AONR, xmax = Optimums()$AONR,
      #                   color = "grey15", fill = "steelblue",
      #                   angle = '90', hjust = 0)+
      # ggplot2::annotate("pointrange",
      #                   label = "Economical Optimum Dosis",
      #                   shape = 25, size = 4,
-     #                   x = Optimums()$EOD, y = 0,
-     #                   xmin = Optimums()$EOD, xmax = Optimums()$EOD,
+     #                   x = Optimums()$EONR, y = 0,
+     #                   xmin = Optimums()$EONR, xmax = Optimums()$EONR,
      #                   color = "grey15", fill = "#a6808c",
      #                   angle = '90', hjust = 0)+
    # ggplot2::annotate("text",label = paste(paste("Equation: ", QP_Fit()$equation), paste("R2: ", QP_Fit()$R2), sep="\n"),
    #                          x = QP_Fit()$CSTV, y = QP_Fit()$plateau, hjust = 1,vjust = 1.5, col = "grey25")+  
    theme_bw()+
-     labs(x = "N fertilizer applied (lbs N/ac)",
+     labs(x = "N rate (lbs N/ac)",
           y = "Corn Yield (bu/ac)")+
      theme(panel.grid = element_blank(),
            axis.text.x = element_text(size=rel(0.8), color = "black"),
@@ -232,7 +244,7 @@ Column {data-width=300}
 
 priceRatio <- reactive({
   
-  out <- round(as.numeric(input$NCost/ input$cornPrice), 1)
+  out <- round(as.numeric(input$NCost/ input$cornPrice), 2)
   
   out
 
@@ -241,12 +253,14 @@ priceRatio <- reactive({
 flexdashboard::renderGauge({
   
   flexdashboard::gauge(priceRatio(),
-                       min = 0,
-                       max = 15,
+                       min = 0.02,
+                       max = 0.30,
                        symbol = '',
-                       label = "Price Ratio",
-                        gaugeSectors( success = c(0,6), warning = c(6.001,12), danger = c(12, 15),
-                                      colors = c("#2a9d8f", "#fcbf49", "#ce4257"))
+                       label = "bu Corn / lb N",
+                        gaugeSectors(success = c(0,0.1), 
+                                     warning = c(0.0101,0.15), 
+                                     danger = c(0.151, 0.30),
+                                     colors = c("#2a9d8f", "#fcbf49", "#ce4257"))
                         )
   
 })
@@ -256,8 +270,10 @@ flexdashboard::renderGauge({
 Optimums <- reactive({
   
    QP_Fit() %>%
-    mutate(AOD = CSTV,
-           EOD = (priceRatio() - slope) + (2*(-slope/2*CSTV))
+    mutate(AONR = CSTV,
+           EONR = (priceRatio() - slope) / (2*(-slope / (2*AONR))),
+           EONR = ifelse(EONR >= 0, 
+                         EONR, 0)
            )
   
 })
@@ -272,8 +288,8 @@ Optimums <- reactive({
 
 flexdashboard::renderValueBox({
   
-  flexdashboard::valueBox(paste(round(Optimums()$AOD,0), "lbs N/ac"), 
-            h6("Agronomical Optimum Dosis"), 
+  flexdashboard::valueBox(paste(round(Optimums()$AONR,0), "lbs N/ac"), 
+            h6("Agronomic Optimum N Rate"), 
             icon = "fa-seedling", 
             color = "#166e95")
   }) 
@@ -286,8 +302,8 @@ flexdashboard::renderValueBox({
 
 flexdashboard::renderValueBox({
   
-  flexdashboard::valueBox(paste(round(Optimums()$EOD,0), "lbs N/ac"), 
-            h6("Economical Optimum Dosis"), 
+  flexdashboard::valueBox(paste(round(Optimums()$EONR,0), "lbs N/ac"), 
+            h6("Economic Optimum N Rate"), 
             icon = "fa-coins", 
             color = "#ee826c")
   })
@@ -318,13 +334,6 @@ flexdashboard::renderValueBox({
 
 
 ```
-
-### Help us answering our survey!
-
-```{r}
-tags$img(src = "Survey.png", height = "200px", width = "200px")
-```
-
 
 Contribute
 =======================================================
