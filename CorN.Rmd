@@ -1,0 +1,342 @@
+---
+title: "CorN"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    logo: www/Logo.png
+    css: css/styles.css
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+# Libraries ----
+
+## 1. App ----
+library(shiny)
+library(flexdashboard)
+library(shinydashboard)
+library(shinythemes)
+library(shinyWidgets)
+
+## 2. Map -----
+library(leaflet)
+library(sf)
+
+## 3. Data manipulation ----
+library(dplyr)
+library(tidyverse)
+
+## 4. Graphs ----
+library(ggplot2)
+library(plotly)
+library(nlstools)
+
+library(DT)
+
+# Data import ----
+countiesNames <- read.csv("data/trials.csv", sep=",", dec=".")
+countiesBorders <- st_read("Kansas_Counties/Tiger_2020_Counties.shp")
+datafcurves <- read.csv("data/curves.csv", sep=",", dec=".")
+listOfCounties <- read.csv("data/list.csv", sep=",", dec=".")
+
+# Function import ----
+source(file = "quadratic_plateau.R")
+library(nlraa)
+library(minpack.lm)
+library(devtools)
+
+```
+
+
+Visualization
+=======================================================
+
+Column {data-width=300}
+-------------------------------------------------------
+
+### Inputs
+
+```{r}
+
+# Select for counties -----
+counties <- subset(countiesNames, select = c(1))
+
+shinyWidgets::pickerInput(inputId = "countiesSelection",
+                          label = h6("Select counties or whole state: "),
+                          choices = counties,
+                          multiple = TRUE,
+                          options = list(`actions-box` = TRUE),
+                          selected = "Riley"
+        )
+
+hr()
+
+# N price -----
+shiny::sliderInput(inputId = "NCost",
+                   label = h6("Select the actual Nitrogen source cost (US$/kg N)"),
+                   value = 2.8, 
+                   min = 1,
+                   max = 3.0,
+                   step = 0.1)
+
+hr()
+
+# Corn price -----
+shiny::sliderInput(inputId = "cornPrice",
+                   label = h6("Select the actual selling corn price (US$/kg)"),
+                   value = 0.35, 
+                   min = 0.1,
+                   max = 0.7,
+                   step = 0.01)
+
+```
+
+
+Column {data-width=750}
+-------------------------------------------------------
+
+### Counties Selected
+
+```{r}
+
+# Filtering from user input -----
+selectedCounties <- reactive({
+ 
+  countiesSelected <- countiesBorders %>%
+    dplyr::filter(NAME %in% input$countiesSelection)
+  
+  countiesSelected
+  
+})
+
+# Generating Map ----
+output$countiesMap <- renderLeaflet({
+    
+    leaflet(width = 200, height = 300) %>%
+          setView(lng = -98, lat = 38.5, zoom = 06) %>%
+          addTiles() %>%
+          addPolygons( data = countiesBorders,
+                       weight = 1,
+                       smoothFactor = 0.2,
+                       fillOpacity = 0.2,
+                       color = "black",
+                        highlight = highlightOptions(
+                             weight = 5,
+                             color = "#666666",
+                             fillOpacity = 0.25,
+                             bringToFront = TRUE
+                           )
+            ) %>%
+          addPolygons( data = selectedCounties(),
+                       weight = 1,
+                       smoothFactor = 1,
+                       fillOpacity = 1,
+                       color = "#330a57",
+                        highlight = highlightOptions(
+                             weight = 5,
+                             color = "#666666",
+                             fillOpacity = 0.5,
+                             bringToFront = TRUE
+                           )
+            )
+
+  
+})
+
+# Showing the map ----
+leafletOutput("countiesMap", height = 600)
+
+```
+
+### Probable Response Curve
+
+```{r}
+
+# Filtering data ----
+datafplot <- reactive({
+  
+  datafcurves %>%
+    dplyr::filter(County %in% input$countiesSelection) %>%
+    dplyr::select(c(Nrate, Yield))
+  
+})
+
+# Transforming in quadratic plateu ----
+QP_Fit <- reactive({
+  
+   quadratic_plateau(data = datafplot(),
+                     yield = Yield,
+                     Nav = Nrate,
+                     plot = FALSE,
+                     tidy = TRUE)
+  
+})
+
+
+
+# Creating curve ----
+output$responseCurve <-  renderPlotly({
+   
+   plot <- ggplot(data = datafplot(),
+                    aes(y = datafplot()$Yield,
+                        x = datafplot()$Nrate))+
+     #geom_point(size = 2, alpha = 0.5) +
+     geom_line(stat="smooth",
+            method = "nls",
+            formula = y ~ SSquadp3xs(x, a, b, jp),
+            se = FALSE,
+            color = "#CC0000")+
+     # geom_vline(xintercept = Optimums()$AOD, size = 1,
+     #            linetype = "dashed", color = "steelblue")+
+     # geom_vline(xintercept = Optimums()$EOD, size = 1,
+     #            linetype = "dotted", color = "#a6808c")+
+     # ggplot2::annotate("pointrange",
+     #                   label = "Agronomical Optimum Dosis",
+     #                   shape = 25, size = 4,
+     #                   x = Optimums()$AOD, y = 0,
+     #                   xmin = Optimums()$AOD, xmax = Optimums()$AOD,
+     #                   color = "grey15", fill = "steelblue",
+     #                   angle = '90', hjust = 0)+
+     # ggplot2::annotate("pointrange",
+     #                   label = "Economical Optimum Dosis",
+     #                   shape = 25, size = 4,
+     #                   x = Optimums()$EOD, y = 0,
+     #                   xmin = Optimums()$EOD, xmax = Optimums()$EOD,
+     #                   color = "grey15", fill = "#a6808c",
+     #                   angle = '90', hjust = 0)+
+   # ggplot2::annotate("text",label = paste(paste("Equation: ", QP_Fit()$equation), paste("R2: ", QP_Fit()$R2), sep="\n"),
+   #                          x = QP_Fit()$CSTV, y = QP_Fit()$plateau, hjust = 1,vjust = 1.5, col = "grey25")+  
+   theme_bw()+
+     labs(x = "N fertilizer applied (lbs N/ac)",
+          y = "Corn Yield (bu/ac)")+
+     theme(panel.grid = element_blank(),
+           axis.text.x = element_text(size=rel(0.8), color = "black"),
+           axis.text.y = element_text(size=rel(0.8), color = "black"),
+           strip.text = element_text(size=rel(0.5), color = "black"))
+
+  ggplotly(plot)
+ 
+ })
+
+plotlyOutput(outputId = "responseCurve")
+
+```
+
+Column {data-width=300}
+-------------------------------------------------------
+
+### Price Ratio
+
+```{r}
+
+priceRatio <- reactive({
+  
+  out <- round(as.numeric(input$NCost/ input$cornPrice), 1)
+  
+  out
+
+})
+
+flexdashboard::renderGauge({
+  
+  flexdashboard::gauge(priceRatio(),
+                       min = 0,
+                       max = 15,
+                       symbol = '',
+                       label = "Price Ratio",
+                        gaugeSectors( success = c(0,6), warning = c(6.001,12), danger = c(12, 15),
+                                      colors = c("#2a9d8f", "#fcbf49", "#ce4257"))
+                        )
+  
+})
+
+
+# Discovering Optimums ----
+Optimums <- reactive({
+  
+   QP_Fit() %>%
+    mutate(AOD = CSTV,
+           EOD = (priceRatio() - slope) + (2*(-slope/2*CSTV))
+           )
+  
+})
+
+
+
+```
+
+### Agronomical Optimum Dosis
+
+```{r}
+
+flexdashboard::renderValueBox({
+  
+  flexdashboard::valueBox(paste(round(Optimums()$AOD,0), "lbs N/ac"), 
+            h6("Agronomical Optimum Dosis"), 
+            icon = "fa-seedling", 
+            color = "#166e95")
+  }) 
+
+```
+
+### Economical Optimum Dosis
+
+```{r}
+
+flexdashboard::renderValueBox({
+  
+  flexdashboard::valueBox(paste(round(Optimums()$EOD,0), "lbs N/ac"), 
+            h6("Economical Optimum Dosis"), 
+            icon = "fa-coins", 
+            color = "#ee826c")
+  })
+
+```
+
+### Trials in selected counties
+
+```{r}
+
+ntrials <- reactive({
+  
+  numberOfTrials <- countiesNames %>%
+    dplyr::filter(County %in% input$countiesSelection) %>%
+    dplyr::summarise(Number = sum(Trials))
+  
+  numberOfTrials
+  
+})
+
+flexdashboard::renderValueBox({
+  
+  flexdashboard::valueBox(ntrials(),
+                          h6("Trials in selected counties"),
+                          icon = "fa-flag",
+                          color = "#d9575b")
+  })
+
+
+```
+
+### Help us answering our survey!
+
+```{r}
+tags$img(src = "Survey.png", height = "200px", width = "200px")
+```
+
+
+Contribute
+=======================================================
+```{r}
+DT::renderDataTable(QP_Fit())
+```
+
+
+About
+=======================================================
+
+
+
+
+

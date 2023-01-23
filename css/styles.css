@@ -1,0 +1,139 @@
+/* MOBILE */
+
+@media screen and (min-width: 767px) {
+    .sidebar {
+        width: 350px !important;
+        overflow-y: scroll;
+    }
+    /*.chart-shim {
+        overflow-y: scroll !important;
+    }*/
+}
+
+@media screen and (max-width: 767px) {
+    .chart-shim {
+        overflow-y: scroll !important;
+    }
+}
+
+/* ERROR 
+.shiny-output-error { visibility: hidden; }
+.shiny-output-error:before { visibility: hidden; } */
+
+/* FONTS */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@600&family=Roboto:wght@300&display=swap');
+.navbar-brand {
+    font-family: 'Montserrat', sans-serif;
+    color: #330a57 !important;
+    float: right;
+    font-size: 25px;
+}
+
+.navbar-inverse .navbar-nav>li>a {
+    font-family: 'Montserrat', sans-serif;
+    color: #330a57;
+}
+
+.navbar-inverse .navbar-nav>.active>a, .navbar-inverse .navbar-nav>.active>a:hover, .navbar-inverse .navbar-nav>.active>a:focus {
+    color: #ffffff;
+    background-color: #330a57;
+}
+.navbar-inverse .navbar-nav>li>a:hover, .navbar-inverse .navbar-nav>li>a:focus {
+    color: #ffffff;
+    background-color: #330a57;
+}
+
+body{
+    font-family: 'Montserrat', sans-serif;
+    color: #ffffff;
+    background-color: #ececec;
+}
+
+.chart-title {
+    font-family: 'Montserrat', sans-serif;
+    color: #ffffff;
+    font-size: 19px !important; 
+    border-bottom: 1px solid #ffffff;
+}
+h6{
+  font-family: 'Montserrat', sans-serif;
+  color: #ffffff;
+  font-size: 15px !important; 
+}
+
+/* NAVBAR */
+.navbar-inverse {
+    background-color: #ffffff;
+    border-color: #ffffff;
+}
+
+.navbar-logo{
+    width: 75px;
+}
+
+/* COLUMNS */
+
+.chart-wrapper, .nav-tabs-custom, .sbframe-commentary {
+    background: #330a57;
+    border: 2px solid #ffffff;
+    border-radius: .25rem;
+    margin-bottom: 8px;
+    margin-right: 8px;
+}
+
+body hr {
+    border-color: #ffffff45;
+    margin: 10px 0;
+}
+
+/* SELECTIZE */
+
+.btn-default {
+    color: black !important;
+    background-color: #d9d9d9;
+}
+
+.btn-default:hover {
+    color: black !important;
+    background-color: #ececec;
+}
+
+.btn-default:active, .btn-default.active, .open>.dropdown-toggle.btn-default {
+    color: #330a57 !important;
+    background-color: #d9d9d9 !important;
+}
+.btn-default:focus, .btn-default.focus {
+    color: #330a57 !important;
+    background-color: #d9d9d9 !important;
+}
+.bootstrap-select .dropdown-toggle .caret {
+    border-width: 10px 10px 0 10px !important;
+}
+
+/* SLIDERS */
+.irs--shiny .irs-bar {
+    background: #b25bff !important
+}
+.irs--shiny .irs-from, .irs--shiny .irs-to, .irs--shiny .irs-single {
+    color: #330a57;
+    font-family: 'Open Sans';
+    background-color: #d9d9d9 !important;
+}
+.irs-min, .irs-max {
+    color: #330a57;
+    font-family: 'Open Sans';
+    background-color: #d9d9d9 !important;
+}
+.irs-with-grid .irs-grid {
+    display: none;
+}
+
+/* GUAGE */
+#section-price-ratio{
+  background-color: white;
+}
+
+/* VALUE BOX */
+.value-output{
+  color: white !important;
+}
