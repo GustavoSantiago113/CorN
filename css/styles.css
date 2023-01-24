@@ -16,9 +16,9 @@
     }
 }
 
-/* ERROR 
+/* ERROR  */
 .shiny-output-error { visibility: hidden; }
-.shiny-output-error:before { visibility: hidden; } */
+.shiny-output-error:before { visibility: hidden; }
 
 /* FONTS */
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@600&family=Roboto:wght@300&display=swap');
@@ -68,7 +68,8 @@ h6{
 }
 
 .navbar-logo{
-    width: 75px;
+    width: 220px;
+    height: 50px;
 }
 
 /* COLUMNS */

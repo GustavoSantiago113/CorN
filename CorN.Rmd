@@ -4,7 +4,7 @@ output:
   flexdashboard::flex_dashboard:
     orientation: columns
     vertical_layout: fill
-    logo: www/Logo.png
+    logo: www/Montage.png
     css: css/styles.css
 runtime: shiny
 ---
@@ -29,6 +29,7 @@ library(tidyverse)
 
 ## 4. Graphs ----
 library(ggplot2)
+library(quantreg)
 library(plotly)
 library(nlstools)
 
@@ -38,13 +39,15 @@ library(DT)
 countiesNames <- read.csv("data/trials.csv", sep=",", dec=".")
 countiesBorders <- st_read("Kansas_Counties/Tiger_2020_Counties.shp")
 datafcurves <- read.csv("data/curves.csv", sep=",", dec=".")
-listOfCounties <- read.csv("data/list.csv", sep=",", dec=".")
 
 # Function import ----
 source(file = "quadratic_plateau.R")
 library(nlraa)
-library(minpack.lm)
-library(devtools)
+
+datafcurves <- datafcurves %>%
+  mutate(yield_bu = Yield * 15.93,
+         nrate_lbs = Nrate *0.89)
+
 
 ```
 
@@ -67,33 +70,123 @@ shinyWidgets::pickerInput(inputId = "countiesSelection",
                           choices = counties,
                           multiple = TRUE,
                           options = list(`actions-box` = TRUE),
-                          selected = "Riley"
+                          selected = c("Riley", "Greeley", "Shawnee", "Franklin", "Republic", "Jefferson", "Marshall", "Osage", "Reno", "Thomas", "Barton", "Labette")
         )
 
 hr()
 
 # N price -----
 shiny::sliderInput(inputId = "NCost",
-                   label = h6("Select the actual Nitrogen source cost (US$/kg N)"),
-                   value = 2.8, 
-                   min = 1,
-                   max = 3.0,
+                   label = h6("Select the actual Nitrogen source cost (US$/lbs N)"),
+                   value = 1, 
+                   min = 0.5,
+                   max = 1.5,
                    step = 0.1)
 
 hr()
 
 # Corn price -----
 shiny::sliderInput(inputId = "cornPrice",
-                   label = h6("Select the actual selling corn price (US$/kg)"),
-                   value = 0.35, 
-                   min = 0.1,
-                   max = 0.7,
-                   step = 0.01)
+                   label = h6("Select the actual selling corn price (US$/bu)"),
+                   value = 6.8, 
+                   min = 2,
+                   max = 8,
+                   step = 0.1)
+
+hr()
+
+# QR Code image ----
+
+h6("How can we improve it? Answer the survey!")
+tags$img(src = "Survey.png", height = "150px", width = "150px")
+
+
 
 ```
 
 
 Column {data-width=750}
+-------------------------------------------------------
+
+### Probable Response Curve
+
+```{r}
+
+# Filtering data ----
+datafplot <- reactive({
+  
+  datafcurves %>%
+    dplyr::filter(County %in% input$countiesSelection) %>%
+    dplyr::select(c(Nrate, Yield, nrate_lbs, yield_bu))
+  
+})
+
+# Transforming in quadratic plateu ----
+QP_Fit <- reactive({
+  
+   quadratic_plateau(data = datafplot(),
+                     yield = yield_bu,
+                     Nav = nrate_lbs,
+                     plot = FALSE,
+                     tidy = TRUE)
+  
+})
+
+
+
+# Creating curve ----
+output$responseCurve <-  renderPlotly({
+   
+   plot <- ggplot(data = datafplot(),
+                    aes(y = datafplot()$Yield,
+                        x = datafplot()$Nrate))+
+     geom_point(size = 1, alpha = 0.25) +
+     geom_line(stat="smooth",
+            method = "nls",
+            formula = y ~ SSquadp3xs(x, a, b, jp),
+            se = FALSE,
+            color = "#330a57") +
+     geom_quantile(quantiles=c(0.10, 0.90), formula= y ~ poly(x,2), 
+                   colour="red", linetype = "dashed", size = 0.25)+
+     geom_vline(xintercept = Optimums()$AOD, size = 1,
+                linetype = "dashed", color = "steelblue") +
+     geom_vline(xintercept = Optimums()$EOD, size = 1,
+                linetype = "dotted", color = "#a6808c") +
+     ggplot2::annotate("pointrange",
+                       shape = 25, size = 4,
+                       x = Optimums()$AOD, y = 0,
+                       xmin = Optimums()$AOD, xmax = Optimums()$AOD,
+                       color = "grey15", fill = "steelblue") +
+     ggplot2::annotate("pointrange",
+                       shape = 25, size = 4,
+                       x = Optimums()$EOD, y = 0,
+                       xmin = Optimums()$EOD, xmax = Optimums()$EOD,
+                       color = "grey15", fill = "#a6808c")+
+   ggplot2::annotate("text",
+                     label = paste(paste("Equation: ", 
+                                         QP_Fit()$equation), 
+                                   paste("R2 = ", QP_Fit()$R2), sep="\n"),
+                            x = 50, y = 10, 
+                            hjust = 1.5,vjust = 1.5, col = "grey25")+
+   theme_bw()+
+     labs(x = "N fertilizer applied (lbs N/ac)",
+          y = "Corn Yield (bu/ac)")+
+     theme(panel.grid = element_blank(),
+           axis.text.x = element_text(size=rel(0.8), color = "#330a57"),
+           axis.text.y = element_text(size=rel(0.8), color = "#330a57"),
+           strip.text = element_text(size=rel(0.5), color = "#330a57"))
+
+  ggplotly(plot)
+ 
+ })
+
+
+# Displaying the plot -----
+plotlyOutput(outputId = "responseCurve")
+
+```
+
+Column {data-width=300}
 -------------------------------------------------------
 
 ### Counties Selected
@@ -114,7 +207,7 @@ selectedCounties <- reactive({
 output$countiesMap <- renderLeaflet({
     
     leaflet(width = 200, height = 300) %>%
-          setView(lng = -98, lat = 38.5, zoom = 06) %>%
+          setView(lng = -98, lat = 38.5, zoom = 05) %>%
           addTiles() %>%
           addPolygons( data = countiesBorders,
                        weight = 1,
@@ -149,103 +242,31 @@ leafletOutput("countiesMap", height = 600)
 
 ```
 
-### Probable Response Curve
-
-```{r}
-
-# Filtering data ----
-datafplot <- reactive({
-  
-  datafcurves %>%
-    dplyr::filter(County %in% input$countiesSelection) %>%
-    dplyr::select(c(Nrate, Yield))
-  
-})
-
-# Transforming in quadratic plateu ----
-QP_Fit <- reactive({
-  
-   quadratic_plateau(data = datafplot(),
-                     yield = Yield,
-                     Nav = Nrate,
-                     plot = FALSE,
-                     tidy = TRUE)
-  
-})
-
-
-
-# Creating curve ----
-output$responseCurve <-  renderPlotly({
-   
-   plot <- ggplot(data = datafplot(),
-                    aes(y = datafplot()$Yield,
-                        x = datafplot()$Nrate))+
-     #geom_point(size = 2, alpha = 0.5) +
-     geom_line(stat="smooth",
-            method = "nls",
-            formula = y ~ SSquadp3xs(x, a, b, jp),
-            se = FALSE,
-            color = "#CC0000")+
-     # geom_vline(xintercept = Optimums()$AOD, size = 1,
-     #            linetype = "dashed", color = "steelblue")+
-     # geom_vline(xintercept = Optimums()$EOD, size = 1,
-     #            linetype = "dotted", color = "#a6808c")+
-     # ggplot2::annotate("pointrange",
-     #                   label = "Agronomical Optimum Dosis",
-     #                   shape = 25, size = 4,
-     #                   x = Optimums()$AOD, y = 0,
-     #                   xmin = Optimums()$AOD, xmax = Optimums()$AOD,
-     #                   color = "grey15", fill = "steelblue",
-     #                   angle = '90', hjust = 0)+
-     # ggplot2::annotate("pointrange",
-     #                   label = "Economical Optimum Dosis",
-     #                   shape = 25, size = 4,
-     #                   x = Optimums()$EOD, y = 0,
-     #                   xmin = Optimums()$EOD, xmax = Optimums()$EOD,
-     #                   color = "grey15", fill = "#a6808c",
-     #                   angle = '90', hjust = 0)+
-   # ggplot2::annotate("text",label = paste(paste("Equation: ", QP_Fit()$equation), paste("R2: ", QP_Fit()$R2), sep="\n"),
-   #                          x = QP_Fit()$CSTV, y = QP_Fit()$plateau, hjust = 1,vjust = 1.5, col = "grey25")+  
-   theme_bw()+
-     labs(x = "N fertilizer applied (lbs N/ac)",
-          y = "Corn Yield (bu/ac)")+
-     theme(panel.grid = element_blank(),
-           axis.text.x = element_text(size=rel(0.8), color = "black"),
-           axis.text.y = element_text(size=rel(0.8), color = "black"),
-           strip.text = element_text(size=rel(0.5), color = "black"))
-
-  ggplotly(plot)
- 
- })
-
-plotlyOutput(outputId = "responseCurve")
-
-```
-
-Column {data-width=300}
--------------------------------------------------------
 
 ### Price Ratio
 
 ```{r}
 
+# Getting price ratios ------
 priceRatio <- reactive({
   
-  out <- round(as.numeric(input$NCost/ input$cornPrice), 1)
+  out <- round(as.numeric(input$NCost/ input$cornPrice), 2)
   
   out
 
 })
 
+# Plotting price ratio gauge ------
 flexdashboard::renderGauge({
   
   flexdashboard::gauge(priceRatio(),
                        min = 0,
-                       max = 15,
+                       max = 0.6,
                        symbol = '',
                        label = "Price Ratio",
-                        gaugeSectors( success = c(0,6), warning = c(6.001,12), danger = c(12, 15),
+                        gaugeSectors( success = c(0,0.1),
+                                      warning = c(0.101,0.15),
+                                      danger = c(0.151, 0.3),
                                       colors = c("#2a9d8f", "#fcbf49", "#ce4257"))
                         )
   
@@ -257,12 +278,12 @@ Optimums <- reactive({
   
    QP_Fit() %>%
     mutate(AOD = CSTV,
-           EOD = (priceRatio() - slope) + (2*(-slope/2*CSTV))
+           EOD = (priceRatio() - slope) / (2*(-slope / (2*AOD))),
+           EOD = ifelse(EOD >= 0, 
+                         EOD, 0)
            )
   
 })
-
-
 
 ```
 
@@ -270,6 +291,7 @@ Optimums <- reactive({
 
 ```{r}
 
+# Agronomical Optimum Dosis ----
 flexdashboard::renderValueBox({
   
   flexdashboard::valueBox(paste(round(Optimums()$AOD,0), "lbs N/ac"), 
@@ -284,6 +306,7 @@ flexdashboard::renderValueBox({
 
 ```{r}
 
+# Economical Optimum Dosis -----
 flexdashboard::renderValueBox({
   
   flexdashboard::valueBox(paste(round(Optimums()$EOD,0), "lbs N/ac"), 
@@ -298,6 +321,8 @@ flexdashboard::renderValueBox({
 
 ```{r}
 
+
+# Getting number of trials  -----
 ntrials <- reactive({
   
   numberOfTrials <- countiesNames %>%
@@ -308,6 +333,7 @@ ntrials <- reactive({
   
 })
 
+# Displaying number of trials -----
 flexdashboard::renderValueBox({
   
   flexdashboard::valueBox(ntrials(),
@@ -317,19 +343,6 @@ flexdashboard::renderValueBox({
   })
 
 
-```
-
-### Help us answering our survey!
-
-```{r}
-tags$img(src = "Survey.png", height = "200px", width = "200px")
-```
-
-
-Contribute
-=======================================================
-```{r}
-DT::renderDataTable(QP_Fit())
 ```
 
 
