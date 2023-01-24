@@ -1,0 +1,13 @@
+name: CorNDB
+title: CorNDB
+username:
+account: ciampittilab
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 8116102
+bundleId: 6769715
+url: https://ciampittilab.shinyapps.io/CorNDB/
+when: 1674587584.047
+lastSyncTime: 1674587584.04701
+asMultiple: FALSE
+asStatic: FALSE

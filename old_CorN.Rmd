@@ -33,8 +33,6 @@ library(quantreg)
 library(plotly)
 library(nlstools)
 
-# Tables
-library(DT)
 
 # Function import ----
 source(file = "quadratic_plateau.R")
@@ -57,7 +55,7 @@ datafcurves <-
 Visualization
 =======================================================
 
-Column {data-width=300}
+Column {data-width=200}
 -------------------------------------------------------
 
 ### Inputs
@@ -97,13 +95,97 @@ shiny::sliderInput(inputId = "cornPrice",
 
 ```
 
-### How we could improve it?
-<i> Your feedback is much appreciated! </i>
+### How could we improve it?
+
 ```{r}
-tags$img(src = "Survey.png", height = "200px", width = "200px")
+tags$img(src = "Survey.png", height = "150px", width = "150px")
 ```
 
-Column {data-width=750}
+Column {data-width=500}
+-------------------------------------------------------
+
+### Probable Response Curve
+
+```{r}
+
+# Filtering data ----
+datafplot <- reactive({
+  
+  datafcurves %>%
+    dplyr::filter(County %in% input$countiesSelection) %>%
+    dplyr::select(c(Nrate, Yield, nrate_lbs, yield_bu))
+  
+})
+
+# Transforming in quadratic plateu ----
+QP_Fit <- reactive({
+  
+   quadratic_plateau(data = datafplot(),
+                     yield = yield_bu,
+                     Nav = nrate_lbs,
+                     plot = FALSE,
+                     tidy = TRUE)
+  
+})
+
+
+
+# Creating curve ----
+output$responseCurve <-  renderPlotly({
+   
+   plot <- 
+     ggplot(data = datafplot(),
+            aes(y = yield_bu, x = nrate_lbs))+
+     scale_y_continuous(breaks = seq(0,300, 25))+
+     scale_x_continuous(breaks = seq(0,250, 25))+
+     geom_point(size = 1, alpha = 0.5, color = "orange") +
+     geom_line(stat="smooth", method = "nls",
+               formula = y ~ SSquadp3xs(x, a, b, jp),
+               se = FALSE, size = 2, color = "steelblue")+
+     geom_quantile(quantiles=c(0.10, 0.90), formula= y ~ poly(x,2), 
+                   colour="#a6808c", linetype = "dashed", size = 0.5)+
+     geom_vline(xintercept = Optimums()$AONR, size = 1,
+                 linetype = "dashed", color = "steelblue")+
+     geom_vline(xintercept = Optimums()$EONR, size = 1,
+                 linetype = "dotted", color = "#a6808c")+
+     ggplot2::annotate("pointrange",
+                     label = "Agronomical Optimum Dosis",
+                     shape = 25, size = 4,
+                     x = Optimums()$AONR, y = 0,
+                     xmin = Optimums()$AONR, xmax = Optimums()$AONR,
+                     color = "grey15", fill = "steelblue",
+                     angle = '90', hjust = 0)+
+   ggplot2::annotate("pointrange",
+                     label = "Economical Optimum Dosis",
+                     shape = 25, size = 4,
+                     x = Optimums()$EONR, y = 0,
+                     xmin = Optimums()$EONR, xmax = Optimums()$EONR,
+                     color = "grey15", fill = "#a6808c",
+                     angle = '90', hjust = 0)+
+   ggplot2::annotate("text",
+                     label = paste(paste("Equation: ", 
+                                         QP_Fit()$equation), 
+                                   paste("R2 = ", QP_Fit()$R2), sep="\n"),
+                            x = 50, y = 10, 
+                            hjust = 1.5,vjust = 1.5, col = "grey25")+
+   theme_bw()+
+     labs(x = "N rate (lbs N/ac)",
+          y = "Corn Yield (bu/ac)")+
+     theme(panel.grid = element_blank(),
+           axis.text.x = element_text(size=rel(0.8), color = "black"),
+           axis.text.y = element_text(size=rel(0.8), color = "black"),
+           strip.text = element_text(size=rel(0.5), color = "black"))
+
+  ggplotly(plot)
+ 
+ })
+
+plotlyOutput(outputId = "responseCurve")
+
+```
+
+
+Column {data-width=300}
 -------------------------------------------------------
 
 ### Counties Selected
@@ -159,85 +241,6 @@ leafletOutput("countiesMap", height = 600)
 
 ```
 
-### Probable Response Curve
-
-```{r}
-
-# Filtering data ----
-datafplot <- reactive({
-  
-  datafcurves %>%
-    dplyr::filter(County %in% input$countiesSelection) %>%
-    dplyr::select(c(Nrate, Yield, nrate_lbs, yield_bu))
-  
-})
-
-# Transforming in quadratic plateu ----
-QP_Fit <- reactive({
-  
-   quadratic_plateau(data = datafplot(),
-                     yield = yield_bu,
-                     Nav = nrate_lbs,
-                     plot = FALSE,
-                     tidy = TRUE)
-  
-})
-
-
-
-# Creating curve ----
-output$responseCurve <-  renderPlotly({
-   
-   plot <- ggplot(data = datafplot(),
-                    aes(y = datafplot()$yield_bu,
-                        x = datafplot()$nrate_lbs))+
-     geom_point(size = 1, alpha = 0.5) +
-     geom_line(stat="smooth",
-            method = "nls",
-            formula = y ~ SSquadp3xs(x, a, b, jp),
-            se = FALSE,
-            color = "steelblue")+
-     geom_quantile(quantiles=c(0.10, 0.90), formula= y ~ poly(x,2), 
-                   colour="red", linetype = "dashed", size = 0.25)+
-     # geom_vline(xintercept = Optimums()$AONR, size = 1,
-     #            linetype = "dashed", color = "steelblue")+
-     # geom_vline(xintercept = Optimums()$EONR, size = 1,
-     #            linetype = "dotted", color = "#a6808c")+
-     # ggplot2::annotate("pointrange",
-     #                   label = "Agronomical Optimum Dosis",
-     #                   shape = 25, size = 4,
-     #                   x = Optimums()$AONR, y = 0,
-     #                   xmin = Optimums()$AONR, xmax = Optimums()$AONR,
-     #                   color = "grey15", fill = "steelblue",
-     #                   angle = '90', hjust = 0)+
-     # ggplot2::annotate("pointrange",
-     #                   label = "Economical Optimum Dosis",
-     #                   shape = 25, size = 4,
-     #                   x = Optimums()$EONR, y = 0,
-     #                   xmin = Optimums()$EONR, xmax = Optimums()$EONR,
-     #                   color = "grey15", fill = "#a6808c",
-     #                   angle = '90', hjust = 0)+
-   # ggplot2::annotate("text",label = paste(paste("Equation: ", QP_Fit()$equation), paste("R2: ", QP_Fit()$R2), sep="\n"),
-   #                          x = QP_Fit()$CSTV, y = QP_Fit()$plateau, hjust = 1,vjust = 1.5, col = "grey25")+  
-   theme_bw()+
-     labs(x = "N rate (lbs N/ac)",
-          y = "Corn Yield (bu/ac)")+
-     theme(panel.grid = element_blank(),
-           axis.text.x = element_text(size=rel(0.8), color = "black"),
-           axis.text.y = element_text(size=rel(0.8), color = "black"),
-           strip.text = element_text(size=rel(0.5), color = "black"))
-
-  ggplotly(plot)
- 
- })
-
-plotlyOutput(outputId = "responseCurve")
-
-```
-
-Column {data-width=300}
--------------------------------------------------------
-
 ### Price Ratio
 
 ```{r}
@@ -282,7 +285,7 @@ Optimums <- reactive({
 
 ```
 
-### Agronomical Optimum Dosis
+### Agronomical Optimum Rate
 
 ```{r}
 
@@ -296,7 +299,7 @@ flexdashboard::renderValueBox({
 
 ```
 
-### Economical Optimum Dosis
+### Economical Optimum Rate
 
 ```{r}
 
@@ -334,13 +337,6 @@ flexdashboard::renderValueBox({
 
 
 ```
-
-Contribute
-=======================================================
-```{r}
-DT::renderDataTable(QP_Fit())
-```
-
 
 About
 =======================================================
