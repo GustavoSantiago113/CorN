@@ -60,6 +60,14 @@ h6{
   color: #ffffff;
   font-size: 15px !important; 
 }
+a{
+  font-weight: bold;
+  color: #ffffff;
+}
+a:hover{
+  font-weight: bold;
+  color: #ececec;
+}
 
 /* NAVBAR */
 .navbar-inverse {

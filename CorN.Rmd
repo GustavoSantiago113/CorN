@@ -1,10 +1,10 @@
 ---
 title: "CorN"
+author: "Database of Corn N trials in Kansas"
 output: 
   flexdashboard::flex_dashboard:
     orientation: columns
     vertical_layout: fill
-    logo: www/Montage.png
     css: css/styles.css
 runtime: shiny
 ---
@@ -98,7 +98,7 @@ hr()
 # QR Code image ----
 
 h6("How can we improve it? Answer the survey!")
-tags$img(src = "Survey.png", height = "150px", width = "150px")
+tags$img(src = "www/Survey.png", height = "150px", width = "150px")
 
 
 
@@ -138,16 +138,16 @@ QP_Fit <- reactive({
 output$responseCurve <-  renderPlotly({
    
    plot <- ggplot(data = datafplot(),
-                    aes(y = datafplot()$Yield,
-                        x = datafplot()$Nrate))+
-     geom_point(size = 1, alpha = 0.25) +
+                    aes(y = datafplot()$yield_bu,
+                        x = datafplot()$nrate_lbs))+
+     geom_point(size = 1, alpha = 0.5, color = "orange") +
      geom_line(stat="smooth",
             method = "nls",
             formula = y ~ SSquadp3xs(x, a, b, jp),
             se = FALSE,
-            color = "#330a57") +
+            color = "steelblue") +
      geom_quantile(quantiles=c(0.10, 0.90), formula= y ~ poly(x,2), 
-                   colour="red", linetype = "dashed", size = 0.25)+
+                   colour="#A6808C", linetype = "dashed", size = 0.5)+
      geom_vline(xintercept = Optimums()$AOD, size = 1,
                 linetype = "dashed", color = "steelblue") +
      geom_vline(xintercept = Optimums()$EOD, size = 1,
@@ -168,6 +168,8 @@ output$responseCurve <-  renderPlotly({
                                    paste("R2 = ", QP_Fit()$R2), sep="\n"),
                             x = 50, y = 10, 
                             hjust = 1.5,vjust = 1.5, col = "grey25")+
+     scale_y_continuous(breaks = seq(0,300, 25))+
+    scale_x_continuous(breaks = seq(0,300, 25))+
    theme_bw()+
      labs(x = "N fertilizer applied (lbs N/ac)",
           y = "Corn Yield (bu/ac)")+
@@ -287,7 +289,7 @@ Optimums <- reactive({
 
 ```
 
-### Agronomical Optimum Dosis
+### Agronomic Optimum Doses
 
 ```{r}
 
@@ -295,14 +297,14 @@ Optimums <- reactive({
 flexdashboard::renderValueBox({
   
   flexdashboard::valueBox(paste(round(Optimums()$AOD,0), "lbs N/ac"), 
-            h6("Agronomical Optimum Dosis"), 
+            h6("Agronomic Optimum Doses"), 
             icon = "fa-seedling", 
             color = "#166e95")
   }) 
 
 ```
 
-### Economical Optimum Dosis
+### Economical Optimum Doses
 
 ```{r}
 
@@ -310,7 +312,7 @@ flexdashboard::renderValueBox({
 flexdashboard::renderValueBox({
   
   flexdashboard::valueBox(paste(round(Optimums()$EOD,0), "lbs N/ac"), 
-            h6("Economical Optimum Dosis"), 
+            h6("Economical Optimum Doses"), 
             icon = "fa-coins", 
             color = "#ee826c")
   })
@@ -349,7 +351,34 @@ flexdashboard::renderValueBox({
 About
 =======================================================
 
+Column {data-width=100}
+-------------------------------------------------------
+```{r}
 
+tags$img(src = "www/images.png", height = "150px", width = "250px")
+br()
+tags$img(src = "www/KCARE_logo_purple.png", height = "250px", width = "250px")
+br()
+tags$img(src = "www/image.png", height = "150px", width = "250px")
+
+```
+
+
+
+Column
+-------------------------------------------------------
+### Description
+<p style="text-align: justify; padding: 20px"> This tool was developed by <a href="https://github.com/GustavoSantiago113">Gustavo N. Santiago</a> and <a href="https://github.com/adriancorrendo">Adrian Correndo</a>, members of <a href = "https://ciampittilab.wixsite.com/ciampitti-lab">Ciampitti Lab</a> at <a href="https://www.k-state.edu/">Kansas State University (KSU).</a> </p>
+<p style="text-align: justify; padding: 20px">The data used on this tool was gathered from several works developed by KSU personnel among different years and counties across Kansas. Using this tool, a farmer can know, based on their region, the economical and agronomic optimum doses for their corn. The agronomic optimum doses is obtained from the trials and the response of a quadratic plateau formula. The economical optimum doses is obtained from the agronomic optimum doses, combined with the price ratio inserted by the user.</p>
+<!-- <p style="text-align: justify; padding: 20px">Above are the sources of the data used in this tool: </p> -->
+<!-- <ul>Source</ul> -->
+<!-- <ul>Source</ul> -->
+<!-- <ul>Source</ul> -->
+<!-- <ul>Source</ul> -->
+<!-- <ul>Source</ul> -->
+<!-- <ul>Source</ul> -->
+<!-- <ul>Source</ul> -->
+<!-- <ul>Source</ul> -->
 
 
 
