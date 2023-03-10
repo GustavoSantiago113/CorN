@@ -5,9 +5,9 @@ account: ciampittilab
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 8117143
-bundleId: 6777464
+bundleId: 6778330
 url: https://ciampittilab.shinyapps.io/CorN/
-when: 1674746672.24327
-lastSyncTime: 1674746672.24328
+when: 1674764189.11551
+lastSyncTime: 1674764189.11552
 asMultiple: FALSE
 asStatic: FALSE

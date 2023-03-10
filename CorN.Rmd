@@ -98,8 +98,10 @@ hr()
 
 # QR Code image ----
 
+h6("Scan here and try the app in your phone")
+tags$img(src = "www/frame.png", height = "150px", width = "150px")
 h6("How can we improve it? Answer the survey!")
-tags$img(src = "www/Survey.png", height = "150px", width = "150px")
+tags$a(href = "https://forms.office.com/Pages/ResponsePage.aspx?id=cfqi2X3Wtky1QQbMqoAT-8M2kjTSYmRHph6N1OnHnQxUQVpUODYxQlJWT1o4Rk5OVTNIM01LWkM5Si4u", "Click here!")
 
 
 
@@ -352,15 +354,15 @@ flexdashboard::renderValueBox({
 About
 =======================================================
 
-Column {data-width=100}
+Column {data-width=50}
 -------------------------------------------------------
 ```{r}
 
-tags$img(src = "www/images.png", height = "150px", width = "250px")
+tags$img(src = "www/images.png", height = "63px", width = "125px")
 br()
-tags$img(src = "www/KCARE_logo_purple.png", height = "250px", width = "250px")
+tags$img(src = "www/KCARE_logo_purple.png", height = "125px", width = "125px")
 br()
-tags$img(src = "www/image.png", height = "150px", width = "250px")
+tags$img(src = "www/image.png", height = "75px", width = "125px")
 
 ```
 
