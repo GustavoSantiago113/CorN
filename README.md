@@ -18,6 +18,8 @@
 
 The objective of this dashboard was to generate an interactive platform to simulate economical and agricultural optimal scenarios for nitrogen fertilization in corn in the state of Kansas.
 
+The dashboard is online and can be used through this [link](https://ciampittilab.shinyapps.io/CorN)
+
 ---
 
 ## Data and data manipulation
